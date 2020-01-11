@@ -4,6 +4,7 @@
 #include "Tile.h"
 #include "GameFramework/Actor.h"
 #include "Engine/World.h"
+#include "DrawDebugHelpers.h"
 
 // Sets default values
 ATile::ATile()
@@ -22,9 +23,12 @@ void ATile::PlaceActors(TSubclassOf<AActor> ToSpawn, int MinSpawn, int MaxSpawn)
 	for (size_t i = 0; i < NumberToSpawn; i++)
 	{
 		FVector SpawnPoint = FMath::RandPointInBox(Bounds);
-		AActor* Spawned = GetWorld()->SpawnActor<AActor>(ToSpawn);
-		Spawned->SetActorRelativeLocation(SpawnPoint);
-		Spawned->AttachToActor(this, FAttachmentTransformRules(EAttachmentRule::KeepRelative, false));
+		if (CastSphere(SpawnPoint, 100))
+		{
+			AActor* Spawned = GetWorld()->SpawnActor<AActor>(ToSpawn);
+			Spawned->SetActorRelativeLocation(SpawnPoint);
+			Spawned->AttachToActor(this, FAttachmentTransformRules(EAttachmentRule::KeepRelative, false));
+		}
 	}
 }
 
@@ -33,6 +37,7 @@ void ATile::BeginPlay()
 {
 	Super::BeginPlay();
 	
+	CastSphere(GetActorLocation(), 300);
 }
 
 // Called every frame
@@ -40,5 +45,23 @@ void ATile::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+}
+
+bool ATile::CastSphere(FVector Location, float Radius)
+{
+	FHitResult HitResult;
+	bool HasHit = GetWorld()->SweepSingleByChannel(
+		HitResult,
+		Location,
+		Location + FVector(.1f, .1f, .1f),
+		FQuat::Identity,
+		ECollisionChannel::ECC_Camera,
+		FCollisionShape::MakeSphere(Radius)
+	);
+
+	FColor ResultColor = HasHit ? FColor::Red : FColor::Green;
+	DrawDebugSphere(GetWorld(), Location, Radius, 100, ResultColor, true, 100);
+
+	return HasHit;
 }
 
